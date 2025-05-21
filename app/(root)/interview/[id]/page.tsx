@@ -3,26 +3,33 @@ import { redirect } from "next/navigation";
 
 import Agent from "@/components/Agent";
 import { getRandomInterviewCover } from "@/lib/utils";
-
-import {
-  getFeedbackByInterviewId,
-  getInterviewById,
-} from "@/lib/actions/general.action";
-import { getCurrentUser } from "@/lib/actions/auth.action";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
 
-const InterviewDetails = async ({ params }: RouteParams) => {
-  const { id } = await params;
+const InterviewDetails = async ({ params }: { params: { id: string } }) => {
+  const { id } = params;
 
-  const user = await getCurrentUser();
+  // Dummy user
+  const dummyUser = {
+    id: "demo-user",
+    name: "Demo User",
+    email: "demo@example.com",
+  };
 
-  const interview = await getInterviewById(id);
-  if (!interview) redirect("/");
+  // Dummy interview data
+  const dummyInterview = {
+    id,
+    role: "Frontend Developer",
+    type: "Technical",
+    techstack: ["React", "TypeScript", "Next.js"],
+    questions: [
+      "What is React?",
+      "Explain how hooks work",
+      "Describe the virtual DOM",
+    ],
+    finalized: true,
+  };
 
-  const feedback = await getFeedbackByInterviewId({
-    interviewId: id,
-    userId: user?.id!,
-  });
+  if (!dummyInterview) redirect("/");
 
   return (
     <>
@@ -36,24 +43,23 @@ const InterviewDetails = async ({ params }: RouteParams) => {
               height={40}
               className="rounded-full object-cover size-[40px]"
             />
-            <h3 className="capitalize">{interview.role} Interview</h3>
+            <h3 className="capitalize">{dummyInterview.role} Interview</h3>
           </div>
 
-          <DisplayTechIcons techStack={interview.techstack} />
+          <DisplayTechIcons techStack={dummyInterview.techstack} />
         </div>
 
         <p className="bg-dark-200 px-4 py-2 rounded-lg h-fit">
-          {interview.type}
+          {dummyInterview.type}
         </p>
       </div>
 
       <Agent
-        userName={user?.name!}
-        userId={user?.id}
+        userName={dummyUser.name}
+        userId={dummyUser.id}
         interviewId={id}
         type="interview"
-        questions={interview.questions}
-        feedbackId={feedback?.id}
+        questions={dummyInterview.questions}
       />
     </>
   );
