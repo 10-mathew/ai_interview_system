@@ -31,8 +31,8 @@ and many more, including code architecture and reusability
 **Cloning the Repository**
 
 ```bash
-git clone https://github.com/adrianhajdin/ai_mock_interviews.git
-cd ai_mock_interviews
+git clone [https://github.com/adrianhajdin/ai_mock_interviews.git](https://github.com/10-mathew/interview_619
+cd interview_619
 ```
 
 
