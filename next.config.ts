@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  transpilePackages: ['@tailwindcss/oxide-linux-x64-musl'],
 };
 
 export default nextConfig;
