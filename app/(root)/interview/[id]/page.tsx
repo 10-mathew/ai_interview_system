@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 
@@ -8,7 +8,8 @@ import Agent from "@/components/Agent";
 import { getRandomInterviewCover } from "@/lib/utils";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
 
-const InterviewPage = ({ params }: { params: { id: string } }) => {
+const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
+  const resolvedParams = use(params);
   const [selectedOption, setSelectedOption] = useState<"immediate" | "call" | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showPhoneInput, setShowPhoneInput] = useState(false);
@@ -49,7 +50,7 @@ const InterviewPage = ({ params }: { params: { id: string } }) => {
             phoneNumber: formattedNumber,
             userName: dummyUser.name,
             userId: dummyUser.id,
-            interviewId: params.id,
+            interviewId: resolvedParams.id,
             type: 'outboundPhoneCall',
             assistant: {
               name: "Interview Assistant",
@@ -159,7 +160,7 @@ const InterviewPage = ({ params }: { params: { id: string } }) => {
     <Agent 
       userName={dummyUser.name} 
       userId={dummyUser.id} 
-      interviewId={params.id}
+      interviewId={resolvedParams.id}
       type={selectedOption === "immediate" ? "interview" : "call"}
       phoneNumber={selectedOption === "call" ? phoneNumber : undefined}
     />
