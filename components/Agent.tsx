@@ -14,6 +14,7 @@ enum CallStatus {
   CONNECTING = "CONNECTING",
   ACTIVE = "ACTIVE",
   FINISHED = "FINISHED",
+  ERROR = "ERROR",
 }
 
 interface SavedMessage {
@@ -28,12 +29,14 @@ const Agent = ({
   feedbackId,
   type,
   questions,
+  phoneNumber,
 }: AgentProps) => {
   const router = useRouter();
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
     const onCallStart = () => {
@@ -115,28 +118,84 @@ const Agent = ({
   }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
 
   const handleCall = async () => {
-    setCallStatus(CallStatus.CONNECTING);
+    try {
+      setError("");
+      setCallStatus(CallStatus.CONNECTING);
 
-    if (type === "generate") {
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-        variableValues: {
-          username: userName,
-          userid: userId,
-        },
-      });
-    } else {
-      let formattedQuestions = "";
-      if (questions) {
-        formattedQuestions = questions
-          .map((question) => `- ${question}`)
-          .join("\n");
+      if (type === "call") {
+        if (!phoneNumber) {
+          setError("Please enter your phone number");
+          setCallStatus(CallStatus.ERROR);
+          return;
+        }
+
+        // Make a POST request to initiate an outbound call
+        const response = await fetch('/api/call', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phoneNumber,
+            userName,
+            userId,
+            interviewId,
+            type: 'outboundPhoneCall',
+            assistant: {
+              name: "Interview Assistant",
+              firstMessage: "Hello! I'm your AI interviewer. Are you ready to begin the interview?",
+              voice: {
+                provider: "azure",
+                voiceId: "andrew"
+              },
+              model: {
+                provider: "anthropic",
+                model: "claude-3-opus-20240229"
+              }
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to initiate call');
+        }
+
+        const callData = await response.json();
+        
+        // Start monitoring the call
+        await vapi.start(process.env.NEXT_PUBLIC_VAPI_CALL_WORKFLOW_ID!, {
+          variableValues: {
+            username: userName,
+            userid: userId,
+            interviewId: interviewId,
+            callId: callData.id
+          },
+        });
+      } else if (type === "generate") {
+        await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
+          variableValues: {
+            username: userName,
+            userid: userId,
+          },
+        });
+      } else {
+        let formattedQuestions = "";
+        if (questions) {
+          formattedQuestions = questions
+            .map((question) => `- ${question}`)
+            .join("\n");
+        }
+
+        await vapi.start(interviewer, {
+          variableValues: {
+            questions: formattedQuestions,
+          },
+        });
       }
-
-      await vapi.start(interviewer, {
-        variableValues: {
-          questions: formattedQuestions,
-        },
-      });
+    } catch (err) {
+      console.error("Error starting call:", err);
+      setError("Failed to start call. Please try again.");
+      setCallStatus(CallStatus.ERROR);
     }
   };
 
@@ -161,6 +220,11 @@ const Agent = ({
             {isSpeaking && <span className="animate-speak" />}
           </div>
           <h3>AI Interviewer</h3>
+          {type === "call" && (
+            <p className="text-sm text-gray-500 mt-2">
+              You will receive a call shortly...
+            </p>
+          )}
         </div>
 
         {/* User Profile Card */}
@@ -197,22 +261,15 @@ const Agent = ({
       <div className="w-full flex justify-center">
         {callStatus !== "ACTIVE" ? (
           <button className="relative btn-call" onClick={() => handleCall()}>
-            <span
-              className={cn(
-                "absolute animate-ping rounded-full opacity-75",
-                callStatus !== "CONNECTING" && "hidden"
-              )}
-            />
-
-            <span className="relative">
-              {callStatus === "INACTIVE" || callStatus === "FINISHED"
-                ? "Call"
-                : ". . ."}
+            <span className="absolute inset-0 flex items-center justify-center">
+              {type === "call" ? "Request Call" : "Start Interview"}
             </span>
           </button>
         ) : (
-          <button className="btn-disconnect" onClick={() => handleDisconnect()}>
-            End
+          <button className="relative btn-call" onClick={() => handleDisconnect()}>
+            <span className="absolute inset-0 flex items-center justify-center">
+              End Interview
+            </span>
           </button>
         )}
       </div>

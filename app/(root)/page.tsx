@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { v4 as uuidv4 } from "uuid";
 
 import { Button } from "@/components/ui/button";
 import InterviewCard from "@/components/InterviewCard";
@@ -11,6 +12,9 @@ async function Home() {
     name: "Demo User",
     email: "demo@example.com",
   };
+
+  // Generate a new interview ID
+  const newInterviewId = uuidv4();
 
   // Dummy interview data
   const dummyInterviews = [
@@ -44,7 +48,7 @@ async function Home() {
           </p>
 
           <Button asChild className="btn-primary max-sm:w-full">
-            <Link href="/interview">Start an Interview</Link>
+            <Link href={`/interview/${newInterviewId}`}>Start an Interview</Link>
           </Button>
         </div>
 
