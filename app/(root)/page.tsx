@@ -3,100 +3,75 @@ import Image from "next/image";
 import { v4 as uuidv4 } from "uuid";
 
 import { Button } from "@/components/ui/button";
-import InterviewCard from "@/components/InterviewCard";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 async function Home() {
-  // Dummy user data
-  const dummyUser = {
-    id: "demo-user",
-    name: "Demo User",
-    email: "demo@example.com",
-  };
-
   // Generate a new interview ID
   const newInterviewId = uuidv4();
 
-  // Dummy interview data
-  const dummyInterviews = [
-    {
-      id: "1",
-      role: "Frontend Developer",
-      type: "Technical",
-      techstack: ["React", "TypeScript", "Next.js"],
-      createdAt: new Date().toISOString(),
-      userId: dummyUser.id,
-      finalized: true,
-    },
-    {
-      id: "2",
-      role: "Full Stack Developer",
-      type: "Mixed",
-      techstack: ["Node.js", "React", "MongoDB"],
-      createdAt: new Date().toISOString(),
-      userId: dummyUser.id,
-      finalized: true,
-    },
+  // Job positions
+  const jobPositions = [
+    "Java Developer",
+    "Frontend Developer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "DevOps Engineer",
+    "Data Scientist",
+    "Machine Learning Engineer",
+    "Software Architect"
   ];
 
   return (
-    <>
-      <section className="card-cta">
-        <div className="flex flex-col gap-6 max-w-lg">
-          <h2>Get Interview-Ready with AI-Powered Practice & Feedback</h2>
+    <main className="min-h-screen flex items-center justify-center p-4">
+      <section className="card-cta max-w-2xl w-full">
+        <div className="flex flex-col gap-6 w-full text-center">
+          <h2 className="text-4xl font-bold">RecruitSense</h2>
           <p className="text-lg">
-            Practice real interview questions & get instant feedback
+            AI-Powered Interview Practice Platform
           </p>
 
-          <Button asChild className="btn-primary max-sm:w-full">
-            <Link href={`/interview/${newInterviewId}`}>Start an Interview</Link>
-          </Button>
-        </div>
+          <form className="flex flex-col gap-4 w-full max-w-md mx-auto">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="name" className="text-sm font-medium">Your Name</label>
+              <Input id="name" placeholder="Enter your name" required />
+            </div>
 
-        <Image
-          src="/robot.png"
-          alt="robo-dude"
-          width={400}
-          height={400}
-          className="max-sm:hidden"
-        />
-      </section>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="position" className="text-sm font-medium">Job Position</label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a position" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobPositions.map((position) => (
+                    <SelectItem key={position} value={position}>
+                      {position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-      <section className="flex flex-col gap-6 mt-8">
-        <h2>Your Interviews</h2>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="cv" className="text-sm font-medium">Your CV</label>
+              <Input 
+                id="cv" 
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                required 
+              />
+              <p className="text-sm text-muted-foreground">Upload your CV in PDF or DOC format</p>
+            </div>
 
-        <div className="interviews-section">
-          {dummyInterviews.map((interview) => (
-            <InterviewCard
-              key={interview.id}
-              userId={dummyUser.id}
-              interviewId={interview.id}
-              role={interview.role}
-              type={interview.type}
-              techstack={interview.techstack}
-              createdAt={interview.createdAt}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-6 mt-8">
-        <h2>Take Interviews</h2>
-
-        <div className="interviews-section">
-          {dummyInterviews.map((interview) => (
-            <InterviewCard
-              key={interview.id}
-              userId={dummyUser.id}
-              interviewId={interview.id}
-              role={interview.role}
-              type={interview.type}
-              techstack={interview.techstack}
-              createdAt={interview.createdAt}
-            />
-          ))}
+            <Button asChild className="btn-primary w-full mt-4">
+              <Link href={`/interview/${newInterviewId}`}>Start Interview</Link>
+            </Button>
+          </form>
         </div>
       </section>
-    </>
+    </main>
   );
 }
 

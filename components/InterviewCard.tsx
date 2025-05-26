@@ -16,13 +16,19 @@ const InterviewCard = async ({
   techstack,
   createdAt,
 }: InterviewCardProps) => {
-  const feedback =
-    userId && interviewId
-      ? await getFeedbackByInterviewId({
-          interviewId,
-          userId,
-        })
-      : null;
+  let feedback = null;
+  
+  try {
+    if (userId && interviewId) {
+      feedback = await getFeedbackByInterviewId({
+        interviewId,
+        userId,
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching feedback:", error);
+    // Continue with null feedback
+  }
 
   const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
 

@@ -24,7 +24,12 @@
 
   --font-mona-sans: "Mona Sans", sans-serif;
 
-  --bg-pattern: url("/pattern.png");
+  --bg-pattern: linear-gradient(45deg, #1a1a1a 25%, transparent 25%),
+                linear-gradient(-45deg, #1a1a1a 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #1a1a1a 75%),
+                linear-gradient(-45deg, transparent 75%, #1a1a1a 75%);
+  --bg-pattern-size: 20px 20px;
+  --bg-pattern-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
 
 :root {
@@ -175,7 +180,7 @@
     @apply flex min-h-14 w-full items-center justify-center gap-1.5 rounded-md;
   }
   .btn-primary {
-    @apply w-fit !bg-primary-200 !text-dark-100 hover:!bg-primary-200/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10;
+    @apply w-fit !bg-primary-200 !text-dark-100 hover:!bg-primary-200/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10 transition-all duration-200;
   }
   .btn-secondary {
     @apply w-fit !bg-dark-200 !text-primary-200 hover:!bg-dark-200/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10;
@@ -266,7 +271,7 @@
   }
 
   .card-cta {
-    @apply flex flex-row blue-gradient-dark rounded-3xl px-16 py-6 items-center justify-between max-sm:px-4;
+    @apply flex flex-row items-center justify-between gap-8 p-8 rounded-2xl bg-gradient-to-br from-dark-200 to-dark-300 backdrop-blur-sm;
   }
 
   .interviews-section {
@@ -291,6 +296,12 @@
     .badge-text {
       @apply text-sm font-semibold capitalize;
     }
+  }
+
+  .pattern {
+    background-image: var(--bg-pattern);
+    background-size: var(--bg-pattern-size);
+    background-position: var(--bg-pattern-position);
   }
 }
 
