@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 
@@ -10,18 +10,31 @@ import DisplayTechIcons from "@/components/DisplayTechIcons";
 
 const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const resolvedParams = use(params);
-  const [selectedOption, setSelectedOption] = useState<"immediate" | "call" | null>(null);
+  const [selectedOption, setSelectedOption] = useState<
+    "immediate" | "call" | null
+  >(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
-  
+
   // Dummy user data
   const dummyUser = {
     id: "demo-user",
     name: "Demo User",
     email: "demo@example.com",
   };
+
+  // Get user name from localStorage using interview ID
+  const [userName, setUserName] = useState<string>("Demo User");
+  useEffect(() => {
+    if (typeof window !== "undefined" && resolvedParams?.id) {
+      const storedName = localStorage.getItem(
+        `interview_user_name_${resolvedParams.id}`
+      );
+      if (storedName) setUserName(storedName);
+    }
+  }, [resolvedParams?.id]);
 
   const handleOptionSelect = (option: "immediate" | "call") => {
     if (option === "call") {
@@ -37,39 +50,42 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
       try {
         setIsCalling(true);
         setCallError(null);
-        
+
         // Ensure phone number is in E.164 format
-        const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
-        
-        const response = await fetch('/api/call', {
-          method: 'POST',
+        const formattedNumber = phoneNumber.startsWith("+")
+          ? phoneNumber
+          : `+${phoneNumber}`;
+
+        const response = await fetch("/api/call", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             phoneNumber: formattedNumber,
             userName: dummyUser.name,
             userId: dummyUser.id,
             interviewId: resolvedParams.id,
-            type: 'outboundPhoneCall',
+            type: "outboundPhoneCall",
             assistant: {
               name: "Interview Assistant",
-              firstMessage: "Hello! I'm your AI interviewer. Are you ready to begin the interview?",
+              firstMessage:
+                "Hello! I'm your AI interviewer. Are you ready to begin the interview?",
               voice: {
                 provider: "azure",
-                voiceId: "andrew"
+                voiceId: "andrew",
               },
               model: {
                 provider: "anthropic",
-                model: "claude-3-opus-20240229"
-              }
-            }
-          })
+                model: "claude-3-opus-20240229",
+              },
+            },
+          }),
         });
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to initiate call');
+          throw new Error(errorData.error || "Failed to initiate call");
         }
 
         // Show calling message for 5 seconds
@@ -79,7 +95,9 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
           setPhoneNumber("");
         }, 5000);
       } catch (error) {
-        setCallError(error instanceof Error ? error.message : 'Failed to initiate call');
+        setCallError(
+          error instanceof Error ? error.message : "Failed to initiate call"
+        );
         setIsCalling(false);
       }
     }
@@ -90,7 +108,9 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Calling you...</h2>
-          <p className="text-gray-600">Please wait while we connect your call.</p>
+          <p className="text-gray-600">
+            Please wait while we connect your call.
+          </p>
         </div>
       </div>
     );
@@ -116,9 +136,15 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </button>
           </div>
         ) : (
-          <form onSubmit={handlePhoneSubmit} className="w-full max-w-md space-y-4">
+          <form
+            onSubmit={handlePhoneSubmit}
+            className="w-full max-w-md space-y-4"
+          >
             <div className="space-y-2">
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="phone"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Enter your phone number
               </label>
               <input
@@ -147,7 +173,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
                 disabled={isCalling}
               >
-                {isCalling ? 'Calling...' : 'Request Call'}
+                {isCalling ? "Calling..." : "Request Call"}
               </button>
             </div>
           </form>
@@ -157,9 +183,9 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   }
 
   return (
-    <Agent 
-      userName={dummyUser.name} 
-      userId={dummyUser.id} 
+    <Agent
+      userName={userName}
+      userId={dummyUser.id}
       interviewId={resolvedParams.id}
       type={selectedOption === "immediate" ? "interview" : "call"}
       phoneNumber={selectedOption === "call" ? phoneNumber : undefined}
