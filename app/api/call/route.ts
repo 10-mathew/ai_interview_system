@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { phoneNumber, userName, userId, interviewId } = body;
+    const { phoneNumber, userName, userId, interviewId, position } = body;
 
     const response = await fetch('https://api.vapi.ai/call', {
       method: 'POST',
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
         },
         assistant: {
           name: "Interview Assistant",
-          firstMessage: "Hello! I'm your AI interviewer. Are you ready to begin the interview?",
+          firstMessage: `Hello ${userName}! I'm your AI interviewer for the ${position} position. Are you ready to begin the interview?`,
           voice: {
             provider: "azure",
             voiceId: "andrew"
@@ -33,7 +33,8 @@ export async function POST(request: Request) {
         metadata: {
           userId,
           interviewId,
-          userName
+          userName,
+          position
         }
       })
     });

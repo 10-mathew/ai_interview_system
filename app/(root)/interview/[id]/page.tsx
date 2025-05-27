@@ -88,9 +88,10 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
           },
           body: JSON.stringify({
             phoneNumber: formattedNumber,
-            userName: dummyUser.name,
+            userName: userName,
             userId: dummyUser.id,
             interviewId: resolvedParams.id,
+            position: position,
             type: "outboundPhoneCall",
             assistant: {
               name: "Interview Assistant",
