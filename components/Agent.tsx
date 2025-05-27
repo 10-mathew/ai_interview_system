@@ -291,7 +291,7 @@ const Agent: React.FC<AgentProps> = ({
           </button>
         ) : (
           <button 
-            className="relative btn-call" 
+            className="relative btn-disconnect" 
             onClick={handleDisconnect}
           >
             <span className="absolute inset-0 flex items-center justify-center">
