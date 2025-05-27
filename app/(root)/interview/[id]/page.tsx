@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import Agent from "@/components/Agent";
 import { getRandomInterviewCover } from "@/lib/utils";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
+import { getInterviewById } from "@/lib/actions/general.action";
 
 const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const resolvedParams = use(params);
@@ -17,6 +18,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
+  const [position, setPosition] = useState<string>("");
 
   // Dummy user data
   const dummyUser = {
@@ -25,15 +27,38 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
     email: "demo@example.com",
   };
 
-  // Get user name from localStorage using interview ID
+  // Get user name and interview data from localStorage using interview ID
   const [userName, setUserName] = useState<string>("Demo User");
   useEffect(() => {
-    if (typeof window !== "undefined" && resolvedParams?.id) {
-      const storedName = localStorage.getItem(
-        `interview_user_name_${resolvedParams.id}`
-      );
-      if (storedName) setUserName(storedName);
-    }
+    const fetchData = async () => {
+      if (typeof window !== "undefined" && resolvedParams?.id) {
+        // Get user name
+        const storedName = localStorage.getItem(
+          `interview_user_name_${resolvedParams.id}`
+        );
+        if (storedName) setUserName(storedName);
+
+        // Get position from localStorage
+        const storedPosition = localStorage.getItem(
+          `interview_position_${resolvedParams.id}`
+        );
+        if (storedPosition) {
+          setPosition(storedPosition);
+        } else {
+          // Fallback to getting from interview data
+          try {
+            const interview = await getInterviewById(resolvedParams.id);
+            if (interview) {
+              setPosition(interview.role);
+            }
+          } catch (error) {
+            console.error("Error fetching interview:", error);
+          }
+        }
+      }
+    };
+
+    fetchData();
   }, [resolvedParams?.id]);
 
   const handleOptionSelect = (option: "immediate" | "call") => {
@@ -69,8 +94,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
             type: "outboundPhoneCall",
             assistant: {
               name: "Interview Assistant",
-              firstMessage:
-                "Hello! I'm your AI interviewer. Are you ready to begin the interview?",
+              firstMessage: `Hello ${userName}! I'm your AI interviewer for the ${position} position. Are you ready to begin the interview?`,
               voice: {
                 provider: "azure",
                 voiceId: "andrew",
@@ -130,7 +154,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </button>
             <button
               onClick={() => handleOptionSelect("call")}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
             >
               Call Me for Interview
             </button>
@@ -189,6 +213,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
       interviewId={resolvedParams.id}
       type={selectedOption === "immediate" ? "interview" : "call"}
       phoneNumber={selectedOption === "call" ? phoneNumber : undefined}
+      position={position}
     />
   );
 };

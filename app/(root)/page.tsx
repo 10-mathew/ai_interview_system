@@ -19,6 +19,7 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [interviewId, setInterviewId] = useState("");
   const [userName, setUserName] = useState("");
+  const [selectedPosition, setSelectedPosition] = useState("");
 
   useEffect(() => {
     setInterviewId(uuidv4());
@@ -42,6 +43,7 @@ export default function Home() {
       const name = nameInput ? nameInput.value : "";
       if (name && interviewId) {
         localStorage.setItem(`interview_user_name_${interviewId}`, name);
+        localStorage.setItem(`interview_position_${interviewId}`, selectedPosition);
       }
       const interviewLink = `${window.location.origin}/interview/${interviewId}`;
       navigator.clipboard.writeText(interviewLink);
@@ -69,7 +71,7 @@ export default function Home() {
               <label htmlFor="position" className="text-sm font-medium">
                 Job Position
               </label>
-              <Select>
+              <Select onValueChange={setSelectedPosition} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a position" />
                 </SelectTrigger>

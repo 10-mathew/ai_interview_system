@@ -1,50 +1,25 @@
-enum MessageTypeEnum {
-  TRANSCRIPT = "transcript",
-  FUNCTION_CALL = "function-call",
-  FUNCTION_CALL_RESULT = "function-call-result",
-  ADD_MESSAGE = "add-message",
+import type { CreateAssistantDTO, Call } from "@vapi-ai/web/dist/api";
+
+export interface Message {
+  type: "transcript" | "function-call" | "function-call-result" | "add-message";
+  role: "user" | "system" | "assistant";
+  transcriptType?: "partial" | "final";
+  transcript?: string;
 }
 
-enum MessageRoleEnum {
-  USER = "user",
-  SYSTEM = "system",
-  ASSISTANT = "assistant",
+export interface VapiInstance {
+  on: (event: string, handler: (data: any) => void) => void;
+  off: (event: string, handler: (data: any) => void) => void;
+  start: (config: CreateAssistantDTO) => Promise<Call | null>;
+  stop: () => void;
 }
 
-enum TranscriptMessageTypeEnum {
-  PARTIAL = "partial",
-  FINAL = "final",
+declare global {
+  interface Window {
+    process: {
+      env: {
+        NEXT_PUBLIC_VAPI_WEB_TOKEN?: string;
+      };
+    };
+  }
 }
-
-interface BaseMessage {
-  type: MessageTypeEnum;
-}
-
-interface TranscriptMessage extends BaseMessage {
-  type: MessageTypeEnum.TRANSCRIPT;
-  role: MessageRoleEnum;
-  transcriptType: TranscriptMessageTypeEnum;
-  transcript: string;
-}
-
-interface FunctionCallMessage extends BaseMessage {
-  type: MessageTypeEnum.FUNCTION_CALL;
-  functionCall: {
-    name: string;
-    parameters: unknown;
-  };
-}
-
-interface FunctionCallResultMessage extends BaseMessage {
-  type: MessageTypeEnum.FUNCTION_CALL_RESULT;
-  functionCallResult: {
-    forwardToClientEnabled?: boolean;
-    result: unknown;
-    [a: string]: unknown;
-  };
-}
-
-type Message =
-  | TranscriptMessage
-  | FunctionCallMessage
-  | FunctionCallResultMessage;

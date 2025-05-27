@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -8,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
+import type { Message, VapiInstance } from "@/types/vapi";
+import type { CreateAssistantDTO, Call } from "@vapi-ai/web/dist/api";
 
 enum CallStatus {
   INACTIVE = "INACTIVE",
@@ -15,14 +18,27 @@ enum CallStatus {
   ACTIVE = "ACTIVE",
   FINISHED = "FINISHED",
   ERROR = "ERROR",
+  COMPLETED = "COMPLETED",
 }
 
 interface SavedMessage {
   role: "user" | "system" | "assistant";
   content: string;
+  timestamp: string;
 }
 
-const Agent = ({
+interface AgentProps {
+  userName: string;
+  userId?: string;
+  interviewId?: string;
+  feedbackId?: string;
+  type: "generate" | "interview" | "call";
+  questions?: string[];
+  phoneNumber?: string;
+  position?: string;
+}
+
+const Agent: React.FC<AgentProps> = ({
   userName,
   userId,
   interviewId,
@@ -30,17 +46,21 @@ const Agent = ({
   type,
   questions,
   phoneNumber,
-}: AgentProps) => {
+  position,
+}) => {
   const router = useRouter();
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [lastMessage, setLastMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
+
+  // Derived state for last message
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1].content : "";
 
   useEffect(() => {
     const onCallStart = () => {
       setCallStatus(CallStatus.ACTIVE);
+      setError(""); // Clear any previous errors
     };
 
     const onCallEnd = () => {
@@ -48,62 +68,76 @@ const Agent = ({
     };
 
     const onMessage = (message: Message) => {
-      if (message.type === "transcript" && message.transcriptType === "final") {
-        const newMessage = { role: message.role, content: message.transcript };
+      if (message.type === "transcript" && message.transcriptType === "final" && message.transcript) {
+        const newMessage: SavedMessage = { 
+          role: message.role, 
+          content: message.transcript,
+          timestamp: new Date().toISOString()
+        };
         setMessages((prev) => [...prev, newMessage]);
       }
     };
 
     const onSpeechStart = () => {
-      console.log("speech start");
       setIsSpeaking(true);
     };
 
     const onSpeechEnd = () => {
-      console.log("speech end");
       setIsSpeaking(false);
     };
 
     const onError = (error: Error) => {
-      console.log("Error:", error);
+      console.error("VAPI Error:", error);
+      setError(error.message);
+      setCallStatus(CallStatus.ERROR);
     };
 
-    vapi.on("call-start", onCallStart);
-    vapi.on("call-end", onCallEnd);
-    vapi.on("message", onMessage);
-    vapi.on("speech-start", onSpeechStart);
-    vapi.on("speech-end", onSpeechEnd);
-    vapi.on("error", onError);
+    // Register event listeners
+    const eventHandlers = {
+      "call-start": onCallStart,
+      "call-end": onCallEnd,
+      "message": onMessage,
+      "speech-start": onSpeechStart,
+      "speech-end": onSpeechEnd,
+      "error": onError,
+    };
 
+    // Attach all event listeners
+    Object.entries(eventHandlers).forEach(([event, handler]) => {
+      (vapi as unknown as VapiInstance).on(event, handler);
+    });
+
+    // Cleanup function
     return () => {
-      vapi.off("call-start", onCallStart);
-      vapi.off("call-end", onCallEnd);
-      vapi.off("message", onMessage);
-      vapi.off("speech-start", onSpeechStart);
-      vapi.off("speech-end", onSpeechEnd);
-      vapi.off("error", onError);
+      Object.entries(eventHandlers).forEach(([event, handler]) => {
+        (vapi as unknown as VapiInstance).off(event, handler);
+      });
     };
   }, []);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      setLastMessage(messages[messages.length - 1].content);
-    }
-
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
-      console.log("handleGenerateFeedback");
+      if (!interviewId || !userId) {
+        console.error("Missing required IDs for feedback generation");
+        return;
+      }
 
-      const { success, feedbackId: id } = await createFeedback({
-        interviewId: interviewId!,
-        userId: userId!,
-        transcript: messages,
-        feedbackId,
-      });
+      try {
+        const { success, feedbackId: id } = await createFeedback({
+          interviewId,
+          userId,
+          transcript: messages,
+          feedbackId,
+        });
 
-      if (success && id) {
-        router.push(`/interview/${interviewId}/feedback`);
-      } else {
-        console.log("Error saving feedback");
+        if (success && id) {
+          router.push(`/interview/${interviewId}/feedback`);
+        } else {
+          throw new Error("Failed to save feedback");
+        }
+      } catch (err) {
+        console.error("Error saving feedback:", err);
+        setError(err instanceof Error ? err.message : "Failed to save feedback");
         router.push("/");
       }
     };
@@ -122,90 +156,70 @@ const Agent = ({
       setError("");
       setCallStatus(CallStatus.CONNECTING);
 
-      if (type === "call") {
-        if (!phoneNumber) {
-          setError("Please enter your phone number");
-          setCallStatus(CallStatus.ERROR);
-          return;
-        }
-
-        // Make a POST request to initiate an outbound call
-        const response = await fetch('/api/call', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            phoneNumber,
-            userName,
-            userId,
-            interviewId,
-            type: 'outboundPhoneCall',
-            assistant: {
-              name: "Interview Assistant",
-              firstMessage: "Hello! I'm your AI interviewer. Are you ready to begin the interview?",
-              voice: {
-                provider: "azure",
-                voiceId: "andrew"
-              },
-              model: {
-                provider: "anthropic",
-                model: "claude-3-opus-20240229"
-              }
-            }
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to initiate call');
-        }
-
-        const callData = await response.json();
-        
-        // Start monitoring the call
-        await vapi.start(process.env.NEXT_PUBLIC_VAPI_CALL_WORKFLOW_ID!, {
-          variableValues: {
-            username: userName,
-            userid: userId,
-            interviewId: interviewId,
-            callId: callData.id
-          },
-        });
-      } else if (type === "generate") {
-        await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-          variableValues: {
-            username: userName,
-            userid: userId,
-          },
-        });
-      } else {
-        let formattedQuestions = "";
-        if (questions) {
-          formattedQuestions = questions
-            .map((question) => `- ${question}`)
-            .join("\n");
-        }
-
-        await vapi.start(interviewer, {
-          variableValues: {
-            questions: formattedQuestions,
-          },
-        });
+      if (!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN) {
+        throw new Error("VAPI token is not configured");
       }
+
+      const vapiInstance = vapi as unknown as VapiInstance;
+      
+      const handleMessage = (message: Message) => {
+        if (message.role === "assistant" && message.transcript) {
+          const savedMessage: SavedMessage = {
+            role: message.role,
+            content: message.transcript,
+            timestamp: new Date().toISOString()
+          };
+          setMessages((prev) => [...prev, savedMessage]);
+        }
+      };
+
+      const handleCallEnded = () => {
+        setCallStatus(CallStatus.COMPLETED);
+        vapiInstance.off("message", handleMessage);
+        vapiInstance.off("callEnded", handleCallEnded);
+        vapiInstance.off("error", handleError);
+      };
+
+      const handleError = (error: Error) => {
+        setError(error.message);
+        setCallStatus(CallStatus.COMPLETED);
+        vapiInstance.off("message", handleMessage);
+        vapiInstance.off("callEnded", handleCallEnded);
+        vapiInstance.off("error", handleError);
+      };
+
+      vapiInstance.on("message", handleMessage);
+      vapiInstance.on("callEnded", handleCallEnded);
+      vapiInstance.on("error", handleError);
+
+      const assistantConfig: CreateAssistantDTO = {
+        name: "Interview Assistant",
+        firstMessage: `Hello ${userName}! I'm your AI interviewer for the ${position} position. Are you ready to begin the interview?`,
+        voice: {
+          provider: "azure",
+          voiceId: "andrew",
+        },
+        model: {
+          provider: "anthropic",
+          model: "claude-3-opus-20240229",
+        },
+      };
+
+      await vapiInstance.start(assistantConfig);
     } catch (err) {
-      console.error("Error starting call:", err);
-      setError("Failed to start call. Please try again.");
-      setCallStatus(CallStatus.ERROR);
+      console.error("Error starting interview:", err);
+      setError(err instanceof Error ? err.message : "Failed to start interview");
+      setCallStatus(CallStatus.COMPLETED);
     }
   };
 
   const handleDisconnect = () => {
     setCallStatus(CallStatus.FINISHED);
-    vapi.stop();
+    (vapi as unknown as VapiInstance).stop();
   };
 
   return (
-    <>
+    <React.Fragment>
       <div className="call-view">
         {/* AI Interviewer Card */}
         <div className="card-interviewer">
@@ -242,6 +256,12 @@ const Agent = ({
         </div>
       </div>
 
+      {error && (
+        <div className="text-red-500 text-center mt-4">
+          {error}
+        </div>
+      )}
+
       {messages.length > 0 && (
         <div className="transcript-border">
           <div className="transcript">
@@ -259,21 +279,28 @@ const Agent = ({
       )}
 
       <div className="w-full flex justify-center">
-        {callStatus !== "ACTIVE" ? (
-          <button className="relative btn-call" onClick={() => handleCall()}>
+        {callStatus !== CallStatus.ACTIVE ? (
+          <button 
+            className="relative btn-call" 
+            onClick={handleCall}
+            disabled={callStatus === CallStatus.CONNECTING}
+          >
             <span className="absolute inset-0 flex items-center justify-center">
               {type === "call" ? "Request Call" : "Start Interview"}
             </span>
           </button>
         ) : (
-          <button className="relative btn-call" onClick={() => handleDisconnect()}>
+          <button 
+            className="relative btn-call" 
+            onClick={handleDisconnect}
+          >
             <span className="absolute inset-0 flex items-center justify-center">
               End Interview
             </span>
           </button>
         )}
       </div>
-    </>
+    </React.Fragment>
   );
 };
 
