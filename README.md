@@ -35,5 +35,12 @@ and many more, including code architecture and reusability
 git clone [https://github.com/adrianhajdin/ai_mock_interviews.git](https://github.com/10-mathew/interview_619
 cd interview_619
 ```
-
+These changes implement:
+Text file (.txt) support for CV uploads
+CV processing and formatting with section headers
+Integration of CV content into the AI interviewer's system prompt
+Proper user name handling throughout the application
+Removal of dummy user data
+Enhanced error handling and validation
+Would you like me to explain any of these changes in more detail?
 
