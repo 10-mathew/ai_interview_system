@@ -228,3 +228,22 @@ export const dummyInterviews: Interview[] = [
     createdAt: "2024-03-14T15:30:00Z",
   },
 ];
+
+export const jobDescriptions: Record<string, string> = {
+  "Java Developer":
+    "Responsible for designing, implementing, and maintaining Java applications. Requires strong knowledge of Java, Spring, and related technologies.",
+  "Frontend Developer":
+    "Builds and maintains the user interface of web applications using technologies like React, HTML, CSS, and JavaScript.",
+  "Backend Developer":
+    "Focuses on server-side logic, databases, and APIs. Works with Node.js, Express, databases, and more.",
+  "Full Stack Developer":
+    "Handles both frontend and backend development, ensuring seamless integration between client and server.",
+  "DevOps Engineer":
+    "Manages infrastructure, CI/CD pipelines, and deployment processes to ensure smooth software delivery.",
+  "Data Scientist":
+    "Analyzes and interprets complex data to help companies make decisions. Uses Python, R, and machine learning frameworks.",
+  "Machine Learning Engineer":
+    "Designs and builds machine learning models and systems for various applications.",
+  "Software Architect":
+    "Designs the overall structure of software systems, making high-level decisions about architecture and technologies.",
+};

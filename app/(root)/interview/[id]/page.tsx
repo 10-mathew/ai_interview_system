@@ -42,6 +42,10 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
         const storedPosition = localStorage.getItem(
           `interview_position_${resolvedParams.id}`
         );
+        // Get custom description if available
+        const storedPositionDesc = localStorage.getItem(
+          `interview_position_desc_${resolvedParams.id}`
+        );
         if (storedPosition) {
           setPosition(storedPosition);
         } else {
@@ -55,6 +59,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
             console.error("Error fetching interview:", error);
           }
         }
+        // Optionally, you could use storedPositionDesc somewhere if needed
       }
     };
 

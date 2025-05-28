@@ -35,15 +35,32 @@ export default function Home() {
     "Data Scientist",
     "Machine Learning Engineer",
     "Software Architect",
+    "Other", // Add 'Other' option
   ];
+
+  const [customPosition, setCustomPosition] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
       const nameInput = document.getElementById("name");
       const name = nameInput ? nameInput.value : "";
+      let positionToSave = selectedPosition;
+      if (selectedPosition === "Other" && customPosition) {
+        positionToSave = customPosition;
+      }
       if (name && interviewId) {
         localStorage.setItem(`interview_user_name_${interviewId}`, name);
-        localStorage.setItem(`interview_position_${interviewId}`, selectedPosition);
+        localStorage.setItem(
+          `interview_position_${interviewId}`,
+          positionToSave
+        );
+        if (selectedPosition === "Other" && customDescription) {
+          localStorage.setItem(
+            `interview_position_desc_${interviewId}`,
+            customDescription
+          );
+        }
       }
       const interviewLink = `${window.location.origin}/interview/${interviewId}`;
       navigator.clipboard.writeText(interviewLink);
@@ -84,6 +101,35 @@ export default function Home() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Show custom input fields if 'Other' is selected */}
+            {selectedPosition === "Other" && (
+              <div className="flex flex-col gap-2">
+                <label htmlFor="customPosition" className="text-sm font-medium">
+                  Enter Job Title
+                </label>
+                <Input
+                  id="customPosition"
+                  placeholder="Enter job title"
+                  value={customPosition}
+                  onChange={(e) => setCustomPosition(e.target.value)}
+                  required
+                />
+                <label
+                  htmlFor="customDescription"
+                  className="text-sm font-medium"
+                >
+                  Enter Job Description
+                </label>
+                <Input
+                  id="customDescription"
+                  placeholder="Enter job description"
+                  value={customDescription}
+                  onChange={(e) => setCustomDescription(e.target.value)}
+                  required
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <label htmlFor="cv" className="text-sm font-medium">
