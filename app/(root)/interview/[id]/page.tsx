@@ -20,15 +20,8 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [callError, setCallError] = useState<string | null>(null);
   const [position, setPosition] = useState<string>("");
 
-  // Dummy user data
-  const dummyUser = {
-    id: "demo-user",
-    name: "Demo User",
-    email: "demo@example.com",
-  };
-
-  // Get user name and interview data from localStorage using interview ID
-  const [userName, setUserName] = useState<string>("Demo User");
+  // Remove dummy user data
+  const [userName, setUserName] = useState<string>("");
   useEffect(() => {
     const fetchData = async () => {
       if (typeof window !== "undefined" && resolvedParams?.id) {
@@ -36,7 +29,11 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
         const storedName = localStorage.getItem(
           `interview_user_name_${resolvedParams.id}`
         );
-        if (storedName) setUserName(storedName);
+        if (storedName) {
+          setUserName(storedName);
+        } else {
+          console.error("No user name found in localStorage");
+        }
 
         // Get position from localStorage
         const storedPosition = localStorage.getItem(
@@ -59,7 +56,6 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
             console.error("Error fetching interview:", error);
           }
         }
-        // Optionally, you could use storedPositionDesc somewhere if needed
       }
     };
 
@@ -81,6 +77,11 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
         setIsCalling(true);
         setCallError(null);
 
+        // Get CV content from localStorage
+        const cvContent = typeof window !== "undefined" 
+          ? localStorage.getItem(`interview_cv_${resolvedParams.id}`) 
+          : null;
+
         // Ensure phone number is in E.164 format
         const formattedNumber = phoneNumber.startsWith("+")
           ? phoneNumber
@@ -94,9 +95,10 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
           body: JSON.stringify({
             phoneNumber: formattedNumber,
             userName: userName,
-            userId: dummyUser.id,
+            userId: resolvedParams.id,
             interviewId: resolvedParams.id,
             position: position,
+            cvContent: cvContent,
             type: "outboundPhoneCall",
             assistant: {
               name: "Interview Assistant",
@@ -108,8 +110,51 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
               model: {
                 provider: "anthropic",
                 model: "claude-3-opus-20240229",
-              },
-            },
+                messages: [
+                  {
+                    role: "system",
+                    content: `You are a professional job interviewer conducting a real-time voice interview with a candidate. Your goal is to assess their qualifications, motivation, and fit for the role.
+
+Candidate Information:
+- Name: ${userName}
+- Position: ${position}
+
+${cvContent ? `CANDIDATE'S CV
+==================
+${cvContent}
+==================
+
+Please use this CV/resume information to:
+1. Ask relevant questions about their experience and skills
+2. Probe deeper into specific projects or achievements mentioned
+3. Assess how their background aligns with the ${position} position
+4. Identify areas where they might need to elaborate or provide more detail
+
+Remember to:
+- Start by acknowledging their name and the position they're interviewing for
+- Reference specific details from their CV when asking questions
+- Keep the conversation natural and flowing
+- Listen actively to responses and ask relevant follow-up questions
+- Be thorough in your assessment while maintaining a professional and friendly tone
+
+` : ''}
+
+Interview Guidelines:
+- Be professional and polite
+- Keep responses concise and conversational
+- Ask follow-up questions when needed
+- Focus on both technical skills and soft skills
+- End the interview professionally with next steps
+
+Remember to:
+- Listen actively to responses
+- Acknowledge answers before moving forward
+- Keep the conversation flowing naturally
+- Be thorough in your assessment`
+                  }
+                ]
+              }
+            }
           }),
         });
 
@@ -215,7 +260,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   return (
     <Agent
       userName={userName}
-      userId={dummyUser.id}
+      userId={resolvedParams.id}
       interviewId={resolvedParams.id}
       type={selectedOption === "immediate" ? "interview" : "call"}
       phoneNumber={selectedOption === "call" ? phoneNumber : undefined}

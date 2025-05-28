@@ -41,16 +41,43 @@ export default function Home() {
   const [customPosition, setCustomPosition] = useState("");
   const [customDescription, setCustomDescription] = useState("");
 
+  const handleCVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Create a FormData object to send the file to our API
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Send the file to our API endpoint for processing
+      const response = await fetch('/api/process-cv', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process CV file');
+      }
+
+      const { text } = await response.json();
+      
+      if (interviewId) {
+        localStorage.setItem(`interview_cv_${interviewId}`, text);
+      }
+    } catch (error) {
+      console.error("Error processing CV file:", error);
+    }
+  };
+
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
-      const nameInput = document.getElementById("name");
-      const name = nameInput ? nameInput.value : "";
       let positionToSave = selectedPosition;
       if (selectedPosition === "Other" && customPosition) {
         positionToSave = customPosition;
       }
-      if (name && interviewId) {
-        localStorage.setItem(`interview_user_name_${interviewId}`, name);
+      if (userName && interviewId) {
+        localStorage.setItem(`interview_user_name_${interviewId}`, userName);
         localStorage.setItem(
           `interview_position_${interviewId}`,
           positionToSave
@@ -81,7 +108,13 @@ export default function Home() {
               <label htmlFor="name" className="text-sm font-medium">
                 Your Name
               </label>
-              <Input id="name" placeholder="Enter your name" required />
+              <Input 
+                id="name" 
+                placeholder="Enter your name" 
+                required 
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+              />
             </div>
 
             <div className="flex flex-col gap-2">
@@ -138,12 +171,13 @@ export default function Home() {
               <Input
                 id="cv"
                 type="file"
-                accept=".pdf,.doc,.docx"
+                accept=".txt"
                 className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 required
+                onChange={handleCVUpload}
               />
               <p className="text-sm text-muted-foreground">
-                Upload your CV in PDF or DOC format
+                Upload your CV in TXT format
               </p>
             </div>
 

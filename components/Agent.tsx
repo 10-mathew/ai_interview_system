@@ -157,12 +157,43 @@ const Agent: React.FC<AgentProps> = ({
       setCallStatus(CallStatus.CONNECTING);
 
       if (!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN) {
-        throw new Error("VAPI token is not configured");
+        throw new Error("VAPI token is not configured. Please check your environment variables.");
       }
 
       const vapiInstance = vapi as unknown as VapiInstance;
       
+      // Get all stored information
+      const storedUserName = typeof window !== "undefined" 
+        ? localStorage.getItem(`interview_user_name_${interviewId}`) 
+        : null;
+      
+      const storedPosition = typeof window !== "undefined" 
+        ? localStorage.getItem(`interview_position_${interviewId}`) 
+        : null;
+      
+      const storedPositionDesc = typeof window !== "undefined" 
+        ? localStorage.getItem(`interview_position_desc_${interviewId}`) 
+        : null;
+      
+      const cvContent = typeof window !== "undefined" 
+        ? localStorage.getItem(`interview_cv_${interviewId}`) 
+        : null;
+
+      // Ensure we have the user's name
+      if (!storedUserName && !userName) {
+        throw new Error("User name not found. Please start over and enter your name.");
+      }
+
+      console.log("Starting interview with:", {
+        userName: storedUserName || userName,
+        position: storedPosition || position,
+        hasPositionDesc: !!storedPositionDesc,
+        hasCV: !!cvContent,
+        interviewId
+      });
+
       const handleMessage = (message: Message) => {
+        console.log("Received message:", message);
         if (message.role === "assistant" && message.transcript) {
           const savedMessage: SavedMessage = {
             role: message.role,
@@ -174,6 +205,7 @@ const Agent: React.FC<AgentProps> = ({
       };
 
       const handleCallEnded = () => {
+        console.log("Call ended");
         setCallStatus(CallStatus.COMPLETED);
         vapiInstance.off("message", handleMessage);
         vapiInstance.off("callEnded", handleCallEnded);
@@ -181,6 +213,7 @@ const Agent: React.FC<AgentProps> = ({
       };
 
       const handleError = (error: Error) => {
+        console.error("Vapi error:", error);
         setError(error.message);
         setCallStatus(CallStatus.COMPLETED);
         vapiInstance.off("message", handleMessage);
@@ -192,9 +225,16 @@ const Agent: React.FC<AgentProps> = ({
       vapiInstance.on("callEnded", handleCallEnded);
       vapiInstance.on("error", handleError);
 
+      const finalUserName = storedUserName || userName;
+      const finalPosition = storedPosition || position;
+
+      if (!finalUserName) {
+        throw new Error("User name is required to start the interview");
+      }
+
       const assistantConfig: CreateAssistantDTO = {
         name: "Interview Assistant",
-        firstMessage: `Hello ${userName}! I'm your AI interviewer for the ${position} position. Are you ready to begin the interview?`,
+        firstMessage: `Hello ${finalUserName}! I'm your AI interviewer for the ${finalPosition} position. Are you ready to begin the interview?`,
         voice: {
           provider: "azure",
           voiceId: "andrew",
@@ -202,10 +242,56 @@ const Agent: React.FC<AgentProps> = ({
         model: {
           provider: "anthropic",
           model: "claude-3-opus-20240229",
+          messages: [
+            {
+              role: "system",
+              content: `You are a professional job interviewer conducting a real-time voice interview with a candidate. Your goal is to assess their qualifications, motivation, and fit for the role.
+
+Candidate Information:
+- Name: ${finalUserName}
+- Position: ${finalPosition}
+${storedPositionDesc ? `- Position Description: ${storedPositionDesc}\n` : ''}
+
+${cvContent ? `CANDIDATE'S CV
+==================
+${cvContent}
+==================
+
+Please use this CV/resume information to:
+1. Ask relevant questions about their experience and skills
+2. Probe deeper into specific projects or achievements mentioned
+3. Assess how their background aligns with the ${finalPosition} position
+4. Identify areas where they might need to elaborate or provide more detail
+
+Remember to:
+- Start by acknowledging their name and the position they're interviewing for
+- Reference specific details from their CV when asking questions
+- Keep the conversation natural and flowing
+- Listen actively to responses and ask relevant follow-up questions
+- Be thorough in your assessment while maintaining a professional and friendly tone
+
+` : ''}
+
+Interview Guidelines:
+- Be professional and polite
+- Keep responses concise and conversational
+- Ask follow-up questions when needed
+- Focus on both technical skills and soft skills
+- End the interview professionally with next steps
+
+Remember to:
+- Listen actively to responses
+- Acknowledge answers before moving forward
+- Keep the conversation flowing naturally
+- Be thorough in your assessment`
+            }
+          ]
         },
       };
 
+      console.log("Starting Vapi with config:", assistantConfig);
       await vapiInstance.start(assistantConfig);
+      console.log("Vapi started successfully");
     } catch (err) {
       console.error("Error starting interview:", err);
       setError(err instanceof Error ? err.message : "Failed to start interview");
