@@ -4,9 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -16,10 +18,12 @@ import {
 } from "@/components/ui/select";
 
 export default function Home() {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [interviewId, setInterviewId] = useState("");
   const [userName, setUserName] = useState("");
   const [selectedPosition, setSelectedPosition] = useState("");
+  const [showShareableLink, setShowShareableLink] = useState(false);
 
   useEffect(() => {
     setInterviewId(uuidv4());
@@ -70,7 +74,8 @@ export default function Home() {
     }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
     if (typeof window !== "undefined") {
       let positionToSave = selectedPosition;
       if (selectedPosition === "Other" && customPosition) {
@@ -89,10 +94,7 @@ export default function Home() {
           );
         }
       }
-      const interviewLink = `${window.location.origin}/interview/${interviewId}`;
-      navigator.clipboard.writeText(interviewLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      router.push(`/share/${interviewId}`);
     }
   };
 
@@ -154,12 +156,13 @@ export default function Home() {
                 >
                   Enter Job Description
                 </label>
-                <Input
+                <Textarea
                   id="customDescription"
                   placeholder="Enter job description"
                   value={customDescription}
                   onChange={(e) => setCustomDescription(e.target.value)}
                   required
+                  className="min-h-[120px]"
                 />
               </div>
             )}
@@ -183,15 +186,8 @@ export default function Home() {
 
             <div className="flex flex-col gap-4 mt-4">
               <Button onClick={handleCopyLink} className="btn-primary w-full">
-                {copied ? "Link Copied!" : "Create Interview Link"}
+                Create Shareable Link
               </Button>
-              {interviewId && (
-                <div className="text-sm text-muted-foreground break-all">
-                  {`${
-                    typeof window !== "undefined" ? window.location.origin : ""
-                  }/interview/${interviewId}`}
-                </div>
-              )}
             </div>
           </form>
         </div>
