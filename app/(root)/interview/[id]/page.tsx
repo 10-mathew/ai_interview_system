@@ -9,8 +9,6 @@ import { getRandomInterviewCover } from "@/lib/utils";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
 import { getInterviewById } from "@/lib/actions/general.action";
 import { saveInterviewData } from "@/lib/actions/interview.action";
-import { auth } from "@/firebase/client";
-import { onAuthStateChanged } from "firebase/auth";
 
 const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const router = useRouter();
@@ -21,7 +19,6 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [isCalling, setIsCalling] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
   const [position, setPosition] = useState<string>("");
-  const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,17 +26,6 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get current user from Firebase Auth
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-          console.error("No authenticated user found");
-          setError("Please sign in to start the interview");
-          setLoading(false);
-          return;
-        }
-
-        setUserId(currentUser.uid);
-
         // Get user name from localStorage
         const storedName = localStorage.getItem(`interview_user_name_${resolvedParams.id}`);
         if (storedName) {
@@ -99,17 +85,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
       }
     };
 
-    // Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        fetchData();
-      } else {
-        setError("Please sign in to start the interview");
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
+    fetchData();
   }, [resolvedParams.id, position]);
 
   const handleOptionSelect = (option: "immediate" | "call") => {
@@ -145,7 +121,6 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
           body: JSON.stringify({
             phoneNumber: formattedNumber,
             userName: userName,
-            userId: userId,
             interviewId: resolvedParams.id,
             position: position,
             cvContent: cvContent,
@@ -205,24 +180,23 @@ Remember to:
                 ]
               }
             }
-          }),
+          })
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to initiate call");
+          throw new Error("Failed to initiate call");
         }
 
-        // Show calling message for 5 seconds
-        setTimeout(() => {
-          setIsCalling(false);
-          setShowPhoneInput(false);
-          setPhoneNumber("");
-        }, 5000);
-      } catch (error) {
-        setCallError(
-          error instanceof Error ? error.message : "Failed to initiate call"
-        );
+        const data = await response.json();
+        if (data.success) {
+          setSelectedOption("call");
+        } else {
+          throw new Error(data.error || "Failed to initiate call");
+        }
+      } catch (err) {
+        console.error("Error initiating call:", err);
+        setCallError(err instanceof Error ? err.message : "Failed to initiate call");
+      } finally {
         setIsCalling(false);
       }
     }
@@ -240,118 +214,105 @@ Remember to:
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <p className="text-red-500 mb-4">{error}</p>
-        <button 
-          onClick={() => router.push("/")}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-        >
+        <Button onClick={() => router.push("/")}>
           Back to Dashboard
-        </button>
+        </Button>
       </div>
     );
   }
 
-  if (isCalling) {
+  if (selectedOption) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Calling you...</h2>
-          <p className="text-gray-600">
-            Please wait while we connect your call.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!selectedOption) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-3xl font-bold mb-8">Choose Interview Type</h1>
-        {!showPhoneInput ? (
-          <div className="space-y-4 w-full max-w-md">
-            <button
-              onClick={() => handleOptionSelect("immediate")}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-            >
-              Start Immediate Interview
-            </button>
-            <button
-              onClick={() => handleOptionSelect("call")}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-            >
-              Call Me for Interview
-            </button>
-          </div>
-        ) : (
-          <form
-            onSubmit={handlePhoneSubmit}
-            className="w-full max-w-md space-y-4"
-          >
-            <div className="space-y-2">
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Enter your phone number
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1234567890"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-              {callError && (
-                <p className="text-red-500 text-sm mt-1">{callError}</p>
-              )}
-            </div>
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={() => setShowPhoneInput(false)}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-                disabled={isCalling}
-              >
-                {isCalling ? "Calling..." : "Request Call"}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    );
-  }
-
-  if (selectedOption === "immediate") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Agent
-          userName={userName}
-          userId={userId}
-          interviewId={resolvedParams.id}
-          type="interview"
-          position={position}
-        />
-      </div>
+      <Agent
+        userName={userName}
+        interviewId={resolvedParams.id}
+        type={selectedOption}
+        phoneNumber={phoneNumber}
+        position={position}
+      />
     );
   }
 
   return (
-    <Agent
-      userName={userName}
-      userId={userId}
-      interviewId={resolvedParams.id}
-      type={selectedOption === "immediate" ? "interview" : "call"}
-      phoneNumber={selectedOption === "call" ? phoneNumber : undefined}
-      position={position}
-    />
+    <section className="section-interview">
+      <div className="flex flex-row justify-center">
+        <h1 className="text-4xl font-semibold">
+          Start Your Interview
+        </h1>
+      </div>
+
+      <div className="flex flex-row justify-center">
+        <div className="flex flex-row gap-5">
+          <div className="flex flex-row gap-2">
+            <p>
+              Position:{" "}
+              <span className="text-primary-200 font-bold capitalize">
+                {position}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <hr />
+
+      <div className="options">
+        <button
+          className="option"
+          onClick={() => handleOptionSelect("immediate")}
+        >
+          <div className="option-content">
+            <Image
+              src="/immediate.svg"
+              width={24}
+              height={24}
+              alt="immediate"
+            />
+            <p>Start Interview Now</p>
+          </div>
+        </button>
+
+        <button
+          className="option"
+          onClick={() => handleOptionSelect("call")}
+        >
+          <div className="option-content">
+            <Image
+              src="/call.svg"
+              width={24}
+              height={24}
+              alt="call"
+            />
+            <p>Receive a Call</p>
+          </div>
+        </button>
+      </div>
+
+      {showPhoneInput && (
+        <form onSubmit={handlePhoneSubmit} className="phone-form">
+          <div className="input-group">
+            <input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="Enter your phone number (e.g., +1234567890)"
+              required
+              className="input"
+            />
+            <button
+              type="submit"
+              disabled={isCalling}
+              className="btn-primary"
+            >
+              {isCalling ? "Calling..." : "Start Call"}
+            </button>
+          </div>
+          {callError && (
+            <p className="text-red-500 mt-2">{callError}</p>
+          )}
+        </form>
+      )}
+    </section>
   );
 };
 
