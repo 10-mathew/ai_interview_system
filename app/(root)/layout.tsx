@@ -6,7 +6,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
     <div className="root-layout">
       <nav className="flex justify-center">
         <Link href="/" className="flex items-center">
-          <h2 className="text-primary-100 text-2xl font-bold">RecruitSense</h2>
         </Link>
       </nav>
 

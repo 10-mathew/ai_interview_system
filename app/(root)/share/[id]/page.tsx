@@ -36,7 +36,7 @@ export default function SharePage() {
 
           <div className="mt-4 p-6 bg-muted rounded-lg">
             <p className="text-lg font-medium mb-4">
-              Interview link for {userName}:
+              Interview link for {userName}
             </p>
             <div className="flex items-center gap-2">
               <code className="text-sm bg-background px-4 py-3 rounded flex-1 break-all">
