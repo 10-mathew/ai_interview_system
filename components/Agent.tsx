@@ -126,7 +126,7 @@ const Agent: React.FC<AgentProps> = ({
 
   useEffect(() => {
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
-      if (!interviewId || !userId) {
+      if (!interviewId) {
         console.error("Missing required IDs for feedback generation");
         return;
       }
@@ -148,9 +148,9 @@ const Agent: React.FC<AgentProps> = ({
 
         const { success, feedbackId: newFeedbackId } = await createFeedback({
           interviewId: id,
-          userId,
+          userId: id, // Use interview ID as user ID when userId is not provided
           transcript: messages,
-          feedbackId,
+          feedbackId: feedbackId || undefined,
         });
 
         if (success && newFeedbackId) {
@@ -172,7 +172,7 @@ const Agent: React.FC<AgentProps> = ({
         handleGenerateFeedback(messages);
       }
     }
-  }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
+  }, [messages, callStatus, feedbackId, interviewId, router, type]);
 
   const handleCall = async () => {
     try {
