@@ -11,8 +11,6 @@ import {
 } from "@/lib/actions/general.action";
 import { getInterviewData } from "@/lib/actions/interview.action";
 import { Button } from "@/components/ui/button";
-import { auth } from "@/firebase/client";
-import { onAuthStateChanged } from "firebase/auth";
 
 const Feedback = ({ params }: { params: Promise<{ id: string }> }) => {
   const router = useRouter();
@@ -87,14 +85,6 @@ ${message.content}`
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get current user from Firebase Auth
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-          console.error("No authenticated user found");
-          setError("Please sign in to view feedback");
-          return;
-        }
-
         // Get interview data
         const interviewData = await getInterviewData(resolvedParams.id);
         if (!interviewData) {
@@ -107,7 +97,7 @@ ${message.content}`
         // Get feedback data
         const feedbackData = await getFeedbackByInterviewId({
           interviewId: resolvedParams.id,
-          userId: currentUser.uid,
+          userId: "anonymous", // Use anonymous user ID
         });
         if (!feedbackData) {
           console.error("Feedback not found");
@@ -123,17 +113,7 @@ ${message.content}`
       }
     };
 
-    // Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        fetchData();
-      } else {
-        setError("Please sign in to view feedback");
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
+    fetchData();
   }, [resolvedParams.id]);
 
   if (loading) {
@@ -255,28 +235,6 @@ ${message.content}`
           <p className="text-sm font-semibold text-black text-center">
             Download Transcript
           </p>
-        </Button>
-
-        <Button className="btn-primary flex-1">
-          <Link
-            href={`/interview/${resolvedParams.id}/transcript`}
-            className="flex w-full justify-center"
-          >
-            <p className="text-sm font-semibold text-black text-center">
-              View Transcript
-            </p>
-          </Link>
-        </Button>
-
-        <Button className="btn-primary flex-1">
-          <Link
-            href={`/interview/${resolvedParams.id}`}
-            className="flex w-full justify-center"
-          >
-            <p className="text-sm font-semibold text-black text-center">
-              Retry Interview
-            </p>
-          </Link>
         </Button>
       </div>
     </section>
