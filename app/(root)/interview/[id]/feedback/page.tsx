@@ -94,11 +94,12 @@ ${message.content}`
         }
         setInterview(interviewData);
 
-        // Get feedback data
+        // Get feedback data using interview ID as user ID
         const feedbackData = await getFeedbackByInterviewId({
           interviewId: resolvedParams.id,
-          userId: "anonymous", // Use anonymous user ID
+          userId: resolvedParams.id, // Use interview ID as user ID
         });
+
         if (!feedbackData) {
           console.error("Feedback not found");
           setError("Feedback not found");
