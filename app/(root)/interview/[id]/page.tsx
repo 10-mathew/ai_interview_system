@@ -1,48 +1,61 @@
 "use client";
 
-import { useState, use, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Image from "next/image";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import Agent from "@/components/Agent";
 import { getRandomInterviewCover } from "@/lib/utils";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
 import { getInterviewById } from "@/lib/actions/general.action";
+import { saveInterviewData } from "@/lib/actions/interview.action";
+import { auth } from "@/firebase/client";
+import { onAuthStateChanged } from "firebase/auth";
 
 const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
+  const router = useRouter();
   const resolvedParams = use(params);
-  const [selectedOption, setSelectedOption] = useState<
-    "immediate" | "call" | null
-  >(null);
+  const [selectedOption, setSelectedOption] = useState<"immediate" | "call" | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
   const [position, setPosition] = useState<string>("");
-
-  // Remove dummy user data
+  const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchData = async () => {
-      if (typeof window !== "undefined" && resolvedParams?.id) {
-        // Get user name
-        const storedName = localStorage.getItem(
-          `interview_user_name_${resolvedParams.id}`
-        );
+      try {
+        // Get current user from Firebase Auth
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          console.error("No authenticated user found");
+          setError("Please sign in to start the interview");
+          setLoading(false);
+          return;
+        }
+
+        setUserId(currentUser.uid);
+
+        // Get user name from localStorage
+        const storedName = localStorage.getItem(`interview_user_name_${resolvedParams.id}`);
         if (storedName) {
           setUserName(storedName);
         } else {
           console.error("No user name found in localStorage");
+          setError("Please start over and enter your name");
+          setLoading(false);
+          return;
         }
 
         // Get position from localStorage
-        const storedPosition = localStorage.getItem(
-          `interview_position_${resolvedParams.id}`
-        );
-        // Get custom description if available
-        const storedPositionDesc = localStorage.getItem(
-          `interview_position_desc_${resolvedParams.id}`
-        );
+        const storedPosition = localStorage.getItem(`interview_position_${resolvedParams.id}`);
+        const storedPositionDesc = localStorage.getItem(`interview_position_desc_${resolvedParams.id}`);
+        const cvContent = localStorage.getItem(`interview_cv_${resolvedParams.id}`);
+
         if (storedPosition) {
           setPosition(storedPosition);
         } else {
@@ -54,13 +67,50 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
             }
           } catch (error) {
             console.error("Error fetching interview:", error);
+            setError("Failed to load interview data");
+            setLoading(false);
+            return;
           }
         }
+
+        // Save to Firebase if we have the data
+        if (storedName && (storedPosition || position)) {
+          const { success } = await saveInterviewData({
+            interviewId: resolvedParams.id,
+            userName: storedName,
+            position: storedPosition || position,
+            positionDescription: storedPositionDesc || undefined,
+            cvContent: cvContent || undefined
+          });
+
+          if (!success) {
+            console.error("Failed to save interview data to Firebase");
+            setError("Failed to save interview data");
+            setLoading(false);
+            return;
+          }
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error in fetchData:", err);
+        setError("An error occurred while loading the interview");
+        setLoading(false);
       }
     };
 
-    fetchData();
-  }, [resolvedParams?.id]);
+    // Listen for auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchData();
+      } else {
+        setError("Please sign in to start the interview");
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [resolvedParams.id, position]);
 
   const handleOptionSelect = (option: "immediate" | "call") => {
     if (option === "call") {
@@ -95,7 +145,7 @@ const InterviewPage = ({ params }: { params: Promise<{ id: string }> }) => {
           body: JSON.stringify({
             phoneNumber: formattedNumber,
             userName: userName,
-            userId: resolvedParams.id,
+            userId: userId,
             interviewId: resolvedParams.id,
             position: position,
             cvContent: cvContent,
@@ -178,6 +228,28 @@ Remember to:
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading interview...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button 
+          onClick={() => router.push("/")}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
   if (isCalling) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -257,10 +329,24 @@ Remember to:
     );
   }
 
+  if (selectedOption === "immediate") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Agent
+          userName={userName}
+          userId={userId}
+          interviewId={resolvedParams.id}
+          type="interview"
+          position={position}
+        />
+      </div>
+    );
+  }
+
   return (
     <Agent
       userName={userName}
-      userId={resolvedParams.id}
+      userId={userId}
       interviewId={resolvedParams.id}
       type={selectedOption === "immediate" ? "interview" : "call"}
       phoneNumber={selectedOption === "call" ? phoneNumber : undefined}

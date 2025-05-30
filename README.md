@@ -47,16 +47,22 @@ RecruitSense is a modern web application that provides AI-powered interview prac
 3. Set up environment variables:
    Create a `.env.local` file with the following variables:
    ```
+   # Firebase Configuration
    NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
    NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+   # Vapi Configuration
+   VAPI_API_KEY=your_vapi_api_key
+   VAPI_BASE_URL=https://api.vapi.ai
+   VAPI_ASSISTANT_ID=your_assistant_id
    ```
 
 4. Run the development server:
-   ```bash
+```bash
    npm run dev
    ```
 

@@ -11,6 +11,7 @@ import { interviewer } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
 import type { Message, VapiInstance } from "@/types/vapi";
 import type { CreateAssistantDTO, Call } from "@vapi-ai/web/dist/api";
+import { saveInterviewData, getInterviewData } from "@/lib/actions/interview.action";
 
 enum CallStatus {
   INACTIVE = "INACTIVE",
@@ -53,6 +54,14 @@ const Agent: React.FC<AgentProps> = ({
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string>("");
+
+  // Helper function to store transcript
+  const storeTranscript = (messages: SavedMessage[], id: string) => {
+    if (typeof window !== "undefined") {
+      const transcriptKey = `interview_transcript_${id}`;
+      localStorage.setItem(transcriptKey, JSON.stringify(messages));
+    }
+  };
 
   // Derived state for last message
   const lastMessage = messages.length > 0 ? messages[messages.length - 1].content : "";
@@ -122,16 +131,30 @@ const Agent: React.FC<AgentProps> = ({
         return;
       }
 
+      // Type guard to ensure interviewId is a string
+      const id = interviewId;
+      if (typeof id !== "string") {
+        console.error("Invalid interview ID");
+        return;
+      }
+
       try {
-        const { success, feedbackId: id } = await createFeedback({
-          interviewId,
+        // Store transcript in localStorage
+        if (typeof window !== "undefined") {
+          const transcriptKey = `interview_transcript_${id}`;
+          localStorage.setItem(transcriptKey, JSON.stringify(messages));
+          console.log("Transcript saved to localStorage:", transcriptKey);
+        }
+
+        const { success, feedbackId: newFeedbackId } = await createFeedback({
+          interviewId: id,
           userId,
           transcript: messages,
           feedbackId,
         });
 
-        if (success && id) {
-          router.push(`/interview/${interviewId}/feedback`);
+        if (success && newFeedbackId) {
+          router.push(`/interview/${id}/feedback`);
         } else {
           throw new Error("Failed to save feedback");
         }
@@ -156,29 +179,22 @@ const Agent: React.FC<AgentProps> = ({
       setError("");
       setCallStatus(CallStatus.CONNECTING);
 
+      // Get data from Firebase instead of localStorage
+      const interviewData = await getInterviewData(interviewId);
+      
+      if (!interviewData) {
+        throw new Error("Interview data not found. Please start over.");
+      }
+
+      const { userName: storedUserName, position: storedPosition, 
+              positionDescription: storedPositionDesc, cvContent } = interviewData;
+
       if (!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN) {
         throw new Error("VAPI token is not configured. Please check your environment variables.");
       }
 
       const vapiInstance = vapi as unknown as VapiInstance;
       
-      // Get all stored information
-      const storedUserName = typeof window !== "undefined" 
-        ? localStorage.getItem(`interview_user_name_${interviewId}`) 
-        : null;
-      
-      const storedPosition = typeof window !== "undefined" 
-        ? localStorage.getItem(`interview_position_${interviewId}`) 
-        : null;
-      
-      const storedPositionDesc = typeof window !== "undefined" 
-        ? localStorage.getItem(`interview_position_desc_${interviewId}`) 
-        : null;
-      
-      const cvContent = typeof window !== "undefined" 
-        ? localStorage.getItem(`interview_cv_${interviewId}`) 
-        : null;
-
       // Ensure we have the user's name
       if (!storedUserName && !userName) {
         throw new Error("User name not found. Please start over and enter your name.");

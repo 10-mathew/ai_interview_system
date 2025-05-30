@@ -303,6 +303,38 @@
     background-size: var(--bg-pattern-size);
     background-position: var(--bg-pattern-position);
   }
+
+  .transcript-container {
+    @apply flex flex-col gap-4 w-full max-w-4xl mx-auto;
+
+    .message {
+      @apply p-4 rounded-lg;
+
+      &.assistant {
+        @apply bg-primary-200/10 border border-primary-200/20;
+      }
+
+      &.user {
+        @apply bg-dark-200/50 border border-dark-300;
+      }
+
+      .message-header {
+        @apply flex justify-between items-center mb-2 text-sm text-gray-400;
+
+        .role {
+          @apply font-semibold;
+        }
+
+        .timestamp {
+          @apply text-xs;
+        }
+      }
+
+      .message-content {
+        @apply text-white text-lg;
+      }
+    }
+  }
 }
 
 @utility dark-gradient {

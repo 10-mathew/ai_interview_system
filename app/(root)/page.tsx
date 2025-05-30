@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { saveInterviewData } from "@/lib/actions/interview.action";
 
 export default function Home() {
   const router = useRouter();
@@ -74,14 +75,30 @@ export default function Home() {
     }
   };
 
-  const handleCopyLink = (e: React.MouseEvent) => {
+  const handleCopyLink = async (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent form submission
     if (typeof window !== "undefined") {
       let positionToSave = selectedPosition;
       if (selectedPosition === "Other" && customPosition) {
         positionToSave = customPosition;
       }
+      
       if (userName && interviewId) {
+        // Save to Firebase
+        const { success } = await saveInterviewData({
+          interviewId,
+          userName,
+          position: positionToSave,
+          positionDescription: selectedPosition === "Other" ? customDescription : undefined,
+          cvContent: localStorage.getItem(`interview_cv_${interviewId}`) || undefined
+        });
+
+        if (!success) {
+          console.error("Failed to save interview data to Firebase");
+          return;
+        }
+
+        // Keep localStorage for backward compatibility
         localStorage.setItem(`interview_user_name_${interviewId}`, userName);
         localStorage.setItem(
           `interview_position_${interviewId}`,
